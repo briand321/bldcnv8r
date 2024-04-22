@@ -34,6 +34,8 @@
 #else
 #define HW_NAME					"60_MK6"
 #endif
+#elif defined(HW60_IS_NV8R)
+#define HW_NAME					"60_NV8R"
 #elif defined(HW60_IS_MK1)
 #define HW_NAME					"60"
 #else

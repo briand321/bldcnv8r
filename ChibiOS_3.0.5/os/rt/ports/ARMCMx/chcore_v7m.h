@@ -119,7 +119,11 @@
  * @brief   NVIC VTOR initialization expression.
  */
 #if !defined(CORTEX_VTOR_INIT) || defined(__DOXYGEN__)
+#if defined( _USE_NBBL_ )
+#define CORTEX_VTOR_INIT                0x08010000U
+#else
 #define CORTEX_VTOR_INIT                0x00000000U
+#endif
 #endif
 
 /**

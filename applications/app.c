@@ -28,6 +28,10 @@
 #include "crc.h"
 #include "servo_simple.h"
 #include "servo_dec.h"
+#if defined( _USE_NBBL_ )
+#include "shared.h"
+#include "nbbl_helper.h"
+#endif
 
 // Private variables
 static app_configuration appconf = {0};
@@ -171,6 +175,20 @@ void app_set_configuration(app_configuration *conf) {
 #endif
 
 	rfhelp_update_conf(&appconf.app_nrf_conf);
+
+#if defined( _USE_NBBL_ )
+    /* Put VESC6 app CAN node ID and bitrate in shared memory for NBBL sync */
+    {
+        bootloader_app_shared_t shared_info;
+        bootloader_app_shared_invalidate();
+
+        shared_info.bus_speed = 
+        nbbl_helper_canspeed_to_br( conf->can_baud_rate );
+
+        shared_info.node_id = conf->controller_id;
+        bootloader_app_shared_write(&shared_info, App);
+    }
+#endif
 }
 
 /**

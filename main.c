@@ -64,6 +64,10 @@
 #include "lispif.h"
 #endif
 
+#if defined( _USE_NBBL_ )
+#include "nbbl_helper.h"
+#endif
+
 /*
  * HW resources used:
  *
@@ -94,9 +98,12 @@ static THD_FUNCTION(flash_integrity_check_thread, arg) {
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_CRC, ENABLE);
 
 	for(;;) {
+/* TODO:  Continuous run-time flash check is incompatible with apps loaded by NBBL */
+#if !defined( _USE_NBBL_ )
 		if (flash_helper_verify_flash_memory_chunk() == FAULT_CODE_FLASH_CORRUPTION) {
 			NVIC_SystemReset();
 		}
+#endif
 
 		chThdSleepMilliseconds(6);
 	}
@@ -240,7 +247,7 @@ int main(void) {
 	timer_init();
 	conf_general_init();
 
-	if( flash_helper_verify_flash_memory() == FAULT_CODE_FLASH_CORRUPTION )	{
+    if( flash_helper_verify_flash_memory() == FAULT_CODE_FLASH_CORRUPTION )	{
 		// Loop here, it is not safe to run any code
 		while (1) {
 			chThdSleepMilliseconds(100);

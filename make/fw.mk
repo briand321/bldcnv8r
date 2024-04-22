@@ -115,8 +115,18 @@ ifeq ($(USE_LISPBM),1)
   USE_OPT += -DUSE_LISPBM
 endif
 
+
+ifeq ($(USE_NBBL),1)
+# Define linker script file here
+LDSCRIPT= ld_eeprom_emu_nbbl.ld
+	EXTRASRC = \
+	   nbbl_helper.c \
+	   shared.c \
+	   crcbldr.c
+else
 # Define linker script file here
 LDSCRIPT= ld_eeprom_emu.ld
+endif
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -144,7 +154,8 @@ CSRC = $(STARTUPSRC) \
        $(BLACKMAGICSRC) \
        qmlui/qmlui.c \
        $(ENCSRC) \
-       conf_custom.c
+       conf_custom.c \
+	   $(EXTRASRC)
 
 ifeq ($(USE_LISPBM),1)
   CSRC += $(LISPBMSRC)
@@ -249,12 +260,17 @@ CPPWARN = -Wall -Wextra -Wundef
 ##############################################################################
 # Start of user section
 #
+ifeq ($(USE_NBBL),1)
+XDEFS = -D_USE_NBBL_
+else
+XDEFS =
+endif
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = $(XDEFS)
 
 # Define ASM defines here
-UADEFS =
+UADEFS = $(XDEFS)
 
 # List all user directories here
 UINCDIR =

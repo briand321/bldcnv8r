@@ -37,18 +37,26 @@
 #define VOLTAGE_RANGE           (uint8_t)((PWR->CSR & PWR_CSR_PVDO) ? VoltageRange_2 : VoltageRange_3)
 
 /* EEPROM start address in Flash */
-#define EEPROM_START_ADDRESS  ((uint32_t)0x08004000) /* EEPROM emulation start address:
-                                                  from sector1 : after 16KByte of used
+#define EEPROM_START_ADDRESS  ((uint32_t)0x08008000) /* EEPROM emulation start address:
+                                                  from sector2 : after 32KByte of used
                                                   Flash memory */
 
 /* Pages 0 and 1 base and end addresses */
 #define PAGE0_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + 0x0000))
 #define PAGE0_END_ADDRESS     ((uint32_t)(EEPROM_START_ADDRESS + (PAGE_SIZE - 1)))
+#if defined( _USE_NBBL_ )
+#define PAGE0_ID              FLASH_Sector_2
+#else
 #define PAGE0_ID              FLASH_Sector_1
+#endif
 
 #define PAGE1_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + 0x4000))
 #define PAGE1_END_ADDRESS     ((uint32_t)(EEPROM_START_ADDRESS + (2 * PAGE_SIZE - 1)))
+#if defined( _USE_NBBL_ )
+#define PAGE1_ID              FLASH_Sector_3
+#else
 #define PAGE1_ID              FLASH_Sector_2
+#endif
 
 /* Used Flash pages for EEPROM emulation */
 #define PAGE0                 ((uint16_t)0x0000)

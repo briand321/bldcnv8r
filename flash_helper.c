@@ -33,19 +33,34 @@
 #include "lispif.h"
 #endif
 
+#if defined( _USE_NBBL_ )
+#include "nbbl_helper.h"
+#endif
+
 /*
  * Defines
  */
 #define FLASH_SECTORS							12
 #define BOOTLOADER_BASE							11
-#define APP_BASE								0
-#define NEW_APP_BASE							8
-#define NEW_APP_SECTORS							3
-#define APP_MAX_SIZE							(1024 * 128 * 4 - 8) // Note that the bootloader needs 8 extra bytes
-#define QMLUI_BASE								9
-#define LISP_BASE								10
+
+#if defined( _USE_NBBL_ )
+#define APP_BASE								4
+#define NEW_APP_BASE							9
+#define NEW_APP_SECTORS							0
+#define APP_MAX_SIZE							(1024 * (128 * 4) - 8) // Note that the bootloader needs 8 extra bytes
+#define QMLUI_BASE								10
+#define LISP_BASE								11
+#else
+#define APP_BASE                                0
+#define NEW_APP_BASE                            8
+#define NEW_APP_SECTORS                         3
+#define APP_MAX_SIZE                            (1024 * 128 * 4 - 8) // Note that the bootloader needs 8 extra bytes
+#define QMLUI_BASE                              9
+#define LISP_BASE                               10
+#endif
 #define QMLUI_MAX_SIZE							(1024 * 128 - 8)
 #define LISP_MAX_SIZE							(1024 * 128 - 8)
+
 
 // Base address of the Flash sectors
 #define ADDR_FLASH_SECTOR_0    					((uint32_t)0x08000000) // Base @ of Sector 0, 16 Kbytes
@@ -61,16 +76,26 @@
 #define ADDR_FLASH_SECTOR_10				    ((uint32_t)0x080C0000) // Base @ of Sector 10, 128 Kbytes
 #define ADDR_FLASH_SECTOR_11				    ((uint32_t)0x080E0000) // Base @ of Sector 11, 128 Kbytes
 
-#define VECTOR_TABLE_ADDRESS					((uint32_t*)ADDR_FLASH_SECTOR_0)
-#define VECTOR_TABLE_SIZE						((uint32_t)(ADDR_FLASH_SECTOR_1 - ADDR_FLASH_SECTOR_0))
+#if defined( _USE_NBBL_ )
+#define VECTOR_TABLE_ADDRESS					((uint32_t*)ADDR_FLASH_SECTOR_4)
+#define VECTOR_TABLE_SIZE						((uint32_t)(ADDR_FLASH_SECTOR_5 - ADDR_FLASH_SECTOR_4))
 #define EEPROM_EMULATION_SIZE					((uint32_t)(ADDR_FLASH_SECTOR_4 - ADDR_FLASH_SECTOR_2))
+#define APP_START_ADDRESS						((uint32_t*)(ADDR_FLASH_SECTOR_5))
+#define APP_SIZE								((uint32_t)(APP_MAX_SIZE))
+#else
+#define VECTOR_TABLE_ADDRESS                    ((uint32_t*)ADDR_FLASH_SECTOR_0)
+#define VECTOR_TABLE_SIZE                       ((uint32_t)(ADDR_FLASH_SECTOR_1 - ADDR_FLASH_SECTOR_0))
+#define EEPROM_EMULATION_SIZE					((uint32_t)(ADDR_FLASH_SECTOR_4 - ADDR_FLASH_SECTOR_2))
+#define APP_START_ADDRESS                       ((uint32_t*)(ADDR_FLASH_SECTOR_3))
+#define APP_SIZE                                ((uint32_t)(APP_MAX_SIZE - VECTOR_TABLE_SIZE - EEPROM_EMULATION_SIZE))
+#endif
 
-#define APP_START_ADDRESS						((uint32_t*)(ADDR_FLASH_SECTOR_3))
-#define APP_SIZE								((uint32_t)(APP_MAX_SIZE - VECTOR_TABLE_SIZE - EEPROM_EMULATION_SIZE))
 
+#if !defined( _USE_NBBL_ )
 #define	APP_CRC_WAS_CALCULATED_FLAG				((uint32_t)0x00000000)
 #define	APP_CRC_WAS_CALCULATED_FLAG_ADDRESS		((uint32_t*)(ADDR_FLASH_SECTOR_0 + APP_MAX_SIZE - 8))
 #define APP_CRC_ADDRESS							((uint32_t*)(ADDR_FLASH_SECTOR_0 + APP_MAX_SIZE - 4))
+#endif
 
 #define ERASE_VOLTAGE_RANGE						(uint8_t)((PWR->CSR & PWR_CSR_PVDO) ? VoltageRange_2 : VoltageRange_3)
 
@@ -170,6 +195,7 @@ uint16_t flash_helper_erase_new_app(uint32_t new_app_size) {
 	return FLASH_COMPLETE;
 }
 
+#if !defined( _USE_NBBL_ )
 uint16_t flash_helper_erase_bootloader(void) {
 	return erase_sector(flash_sector[BOOTLOADER_BASE]);
 }
@@ -177,6 +203,7 @@ uint16_t flash_helper_erase_bootloader(void) {
 uint16_t flash_helper_write_new_app_data(uint32_t offset, uint8_t *data, uint32_t len) {
 	return write_data(flash_addr[NEW_APP_BASE] + offset, data, len);
 }
+#endif
 
 uint16_t flash_helper_erase_code(int ind) {
 #ifdef USE_LISPBM
@@ -234,7 +261,6 @@ uint16_t flash_helper_code_flags(int ind) {
  * Stop the system and jump to the bootloader.
  */
 void flash_helper_jump_to_bootloader(void) {
-	typedef void (*pFunction)(void);
 
 	mc_interface_release_motor_override();
 	usbDisconnectBus(&USBD1);
@@ -249,6 +275,19 @@ void flash_helper_jump_to_bootloader(void) {
 
 	chSysDisable();
 
+#if defined( _USE_NBBL_ )
+	// Clear pending interrupts
+	SCB->ICSR = SCB_ICSR_PENDSVCLR_Msk;
+
+	// Disable all interrupts
+	for(int i = 0;i < 8;i++) {
+		NVIC->ICER[i] = NVIC->IABR[i];
+	}
+
+    /* Invalidate run-time app and give control to NBBL */
+    nbbl_helper_invalidate_app_signature_and_reboot();
+#else
+	typedef void (*pFunction)(void);
 	pFunction jump_to_bootloader;
 
 	// Variable that will be loaded with the start address of the application
@@ -274,6 +313,7 @@ void flash_helper_jump_to_bootloader(void) {
 
 	// Jump to the bootloader
 	jump_to_bootloader();
+#endif
 }
 
 uint8_t* flash_helper_get_sector_address(uint32_t fsector) {
@@ -294,6 +334,9 @@ uint8_t* flash_helper_get_sector_address(uint32_t fsector) {
   * @retval FAULT_CODE_NONE or FAULT_CODE_FLASH_CORRUPTION
   */
 uint32_t flash_helper_verify_flash_memory(void) {
+#if defined( _USE_NBBL_ )
+	return FAULT_CODE_NONE;
+#else
 	uint32_t crc;
 	// Look for a flag indicating that the CRC was previously computed.
 	// If it is blank (0xFFFFFFFF), calculate and store the CRC.
@@ -351,6 +394,7 @@ uint32_t flash_helper_verify_flash_memory(void) {
 		NVIC_SystemReset();
 		return FAULT_CODE_NONE;
 	}
+#endif
 }
 
 uint32_t flash_helper_verify_flash_memory_chunk(void) {
@@ -464,7 +508,8 @@ static void qmlui_check(int ind) {
 	code_checks[ind].check_done = true;
 }
 
-#define VESC_IF_NVM_REGION_SIZE	(ADDR_FLASH_SECTOR_9 - ADDR_FLASH_SECTOR_8)
+/* This is for the LispBM and other run-time script support */
+#define VESC_IF_NVM_REGION_SIZE	(ADDR_FLASH_SECTOR_10 - ADDR_FLASH_SECTOR_9)
 
 /**
   * @brief  Reads len bytes to v from nvm at address
@@ -478,7 +523,7 @@ bool flash_helper_read_nvm(uint8_t *v, unsigned int len, unsigned int address) {
 		return false;
 	}
 
-	memcpy(v, (uint8_t*)(ADDR_FLASH_SECTOR_8 + address), len);
+	memcpy(v, (uint8_t*)(ADDR_FLASH_SECTOR_9 + address), len);
 
 	return true;
 }
@@ -495,7 +540,7 @@ bool flash_helper_write_nvm(uint8_t *v, unsigned int len, unsigned int address) 
 		return false;
 	}
 
-	uint16_t res = write_data(ADDR_FLASH_SECTOR_8 + address, v, len);
+	uint16_t res = write_data(ADDR_FLASH_SECTOR_9 + address, v, len);
 
 	return (res == FLASH_COMPLETE);
 }
@@ -505,5 +550,5 @@ bool flash_helper_write_nvm(uint8_t *v, unsigned int len, unsigned int address) 
   * @retval Boolean indicating success or failure
   */
 bool flash_helper_wipe_nvm(void) {
-	return (erase_sector(flash_sector[8]) == FLASH_COMPLETE);
+	return (erase_sector(flash_sector[9]) == FLASH_COMPLETE);
 }

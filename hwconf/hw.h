@@ -467,7 +467,7 @@
 
 // Default ID
 #ifndef HW_DEFAULT_ID
-#define HW_DEFAULT_ID			(APPCONF_CONTROLLER_ID >= 0 ? APPCONF_CONTROLLER_ID : hw_id_from_uuid())
+#define HW_DEFAULT_ID   (APPCONF_CONTROLLER_ID >= 0 ? APPCONF_CONTROLLER_ID : hw_id_from_uuid())
 #endif
 
 #ifndef HW_LIM_CURRENT

@@ -61,6 +61,9 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
+#if defined( _USE_NBBL_ )
+#include "nbbl_helper.h"
+#endif
 
 // Settings
 #define PRINT_BUFFER_SIZE	400
@@ -316,7 +319,12 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		if (nrf_driver_ext_nrf_running()) {
 			nrf_driver_pause(6000);
 		}
-		uint16_t flash_res = flash_helper_erase_new_app(buffer_get_uint32(data, &ind));
+		uint16_t flash_res = FLASH_COMPLETE;
+#if !defined( _USE_NBBL_ )
+        flash_res = flash_helper_erase_new_app(buffer_get_uint32(data, &ind));
+#else
+        nbbl_helper_invalidate_app_signature();
+#endif
 
 		ind = 0;
 		uint8_t send_buffer[50];
@@ -364,7 +372,10 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		if (nrf_driver_ext_nrf_running()) {
 			nrf_driver_pause(2000);
 		}
-		uint16_t flash_res = flash_helper_write_new_app_data(new_app_offset, data + ind, len - ind);
+		uint16_t flash_res = FLASH_COMPLETE;
+#if !defined( _USE_NBBL_ )
+		flash_res = flash_helper_write_new_app_data(new_app_offset, data + ind, len - ind);
+#endif
 
 		SHUTDOWN_RESET();
 
@@ -1228,7 +1239,10 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		if (nrf_driver_ext_nrf_running()) {
 			nrf_driver_pause(6000);
 		}
-		uint16_t flash_res = flash_helper_erase_bootloader();
+		uint16_t flash_res = FLASH_COMPLETE;
+#if !defined( _USE_NBBL_ )
+		flash_res = flash_helper_erase_bootloader();
+#endif
 
 		ind = 0;
 		uint8_t send_buffer[50];

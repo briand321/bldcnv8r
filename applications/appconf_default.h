@@ -21,9 +21,9 @@
 #define APPCONF_DEFAULT_H_
 
 // Default app configuration
-#ifndef APPCONF_CONTROLLER_ID
+//#ifndef APPCONF_CONTROLLER_ID
 #define APPCONF_CONTROLLER_ID				-1 // Controller id. -1 means it should be calculated from UUID.
-#endif
+//#endif
 #ifndef APPCONF_TIMEOUT_MSEC
 #define APPCONF_TIMEOUT_MSEC				1000
 #endif
@@ -31,7 +31,7 @@
 #define APPCONF_TIMEOUT_BRAKE_CURRENT		0.0
 #endif
 #ifndef APPCONF_CAN_MODE
-#define APPCONF_CAN_MODE					CAN_MODE_VESC
+#define APPCONF_CAN_MODE					CAN_MODE_UAVCAN
 #endif
 #ifndef APPCONF_UAVCAN_ESC_INDEX
 #define APPCONF_UAVCAN_ESC_INDEX			0
@@ -52,7 +52,7 @@
 #define APPCONF_KILL_SW_MODE				KILL_SW_MODE_DISABLED
 #endif
 #ifndef APPCONF_CAN_BAUD_RATE
-#define APPCONF_CAN_BAUD_RATE				CAN_BAUD_500K
+#define APPCONF_CAN_BAUD_RATE				CAN_BAUD_1M
 #endif
 #ifndef APPCONF_PAIRING_DONE
 #define APPCONF_PAIRING_DONE				false

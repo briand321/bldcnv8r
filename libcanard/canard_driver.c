@@ -49,6 +49,10 @@
 #include "utils.h"
 #include "mcpwm_foc.h"
 #include "imu.h"
+#if defined( _USE_NBBL_ )
+#include "nbbl_helper.h"
+#endif
+
 
 // Constants
 #define CAN_APP_NODE_NAME								"org.vesc." HW_NAME
@@ -160,6 +164,7 @@ bool jump_to_bootloader = false;
 #define ADDR_FLASH_SECTOR_10    ((uint32_t)0x080C0000) // Base @ of Sector 10, 128 Kbytes
 #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) // Base @ of Sector 11, 128 Kbytes
 
+#if !defined( _USE_NBBL_ )
 static const uint32_t flash_addr[FLASH_SECTORS] = {
 	ADDR_FLASH_SECTOR_0,
 	ADDR_FLASH_SECTOR_1,
@@ -174,6 +179,7 @@ static const uint32_t flash_addr[FLASH_SECTORS] = {
 	ADDR_FLASH_SECTOR_10,
 	ADDR_FLASH_SECTOR_11
 };
+#endif
 
 /* 
  * Parameter types and enums 
@@ -940,7 +946,6 @@ static void handle_restart_node(void) {
 	__disable_irq();
 	for(;;){};
 }
-
 /*
  * Send a read for a fw update file
  * This request is sent after we recieve a begin firmware udpate request, and then
@@ -981,6 +986,7 @@ static void send_fw_read(CanardInstance *ins)
 						   total_size);
 }
 
+#if !defined( _USE_NBBL_ )
 /*
  * Handle response to file read request. This is called when we recieve a response to 
  * send_fw_read() above. the packet contains a 16 bit value at the begining called 
@@ -1090,6 +1096,7 @@ static void handle_file_read_response(CanardInstance* ins, CanardRxTransfer* tra
 	// Clear the counter so we dont delay the next request for data unecesarily 
 	fw_update.last_ms = 0;
 }
+#endif /* Not USE_NBBL */
 
 /**
  * Handle a begin firmware update request. 
@@ -1141,8 +1148,13 @@ static void handle_begin_firmware_update(CanardInstance* ins, CanardRxTransfer* 
 						   &msg_buffer[0],
 						   total_size);
 
+#if !defined( _USE_NBBL_ )
 	// Erase the reserved flash for new app
 	flash_helper_erase_new_app(RESERVED_FLASH_SPACE_SIZE);
+#else
+    // Invalidate the application validation signature used by NBBL 
+    nbbl_helper_invalidate_app_signature_and_reboot();
+#endif
 
 	last_read_file_req = chVTGetSystemTimeX();
 
@@ -1206,9 +1218,11 @@ static void onTransferReceived(CanardInstance* ins, CanardRxTransfer* transfer) 
 			handle_begin_firmware_update(ins, transfer);
 			break;
 
+#if !defined( _USE_NBBL_ )
 		case UAVCAN_PROTOCOL_FILE_READ_ID:
 			handle_file_read_response(ins, transfer);
 			break;
+#endif
 	   }
 }
 
