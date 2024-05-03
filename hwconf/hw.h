@@ -35,6 +35,9 @@
 #ifdef HW_HAS_DRV8323S
 #include "drv8323s.h"
 #endif
+#if defined( _USE_NBBL_ )
+#include "nbbl_helper.h"
+#endif
 
 #ifndef HW_NAME
 #error "No hardware name set"
@@ -466,8 +469,12 @@
 #endif
 
 // Default ID
+#if defined( _USE_NBBL_ )
+#define HW_DEFAULT_ID   ( nbbl_helper_default_node_id() )
+#else
 #ifndef HW_DEFAULT_ID
 #define HW_DEFAULT_ID   (APPCONF_CONTROLLER_ID >= 0 ? APPCONF_CONTROLLER_ID : hw_id_from_uuid())
+#endif
 #endif
 
 #ifndef HW_LIM_CURRENT

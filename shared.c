@@ -67,7 +67,7 @@
   * Shared memory region used to communicate boot parameters between the bootloader and application
   */
 static const volatile bootloader_app_shared_t
-_shared_boot_info_memory __attribute__((section(".sharedsram")));
+_shared_boot_info_memory[2] __attribute__((section(".sharedsram")));
 
 
 /****************************************************************************
@@ -82,11 +82,11 @@ _shared_boot_info_memory __attribute__((section(".sharedsram")));
  * Name: sm_read
  ****************************************************************************/
 
-inline static void sm_read(bootloader_app_shared_t *pshared)
+inline static void sm_read(uint16_t idx,bootloader_app_shared_t *pshared)
 {
     /* Read out of shared reserved SRAM */
     bootloader_app_shared_t *p_sm 
-        = (bootloader_app_shared_t*) &_shared_boot_info_memory;
+        = (bootloader_app_shared_t*) &_shared_boot_info_memory[idx];
     memcpy( pshared, p_sm, sizeof( bootloader_app_shared_t ) );
 }
 
@@ -95,11 +95,11 @@ inline static void sm_read(bootloader_app_shared_t *pshared)
  * Name: sm_write
  ****************************************************************************/
 
-inline static void sm_write(bootloader_app_shared_t *pshared)
+inline static void sm_write(uint16_t idx, bootloader_app_shared_t *pshared)
 {
     /* Write to shared reserved SRAM */
     bootloader_app_shared_t *p_sm 
-        = (bootloader_app_shared_t*) &_shared_boot_info_memory;
+        = (bootloader_app_shared_t*) &_shared_boot_info_memory[idx];
     memcpy( p_sm, pshared, sizeof( bootloader_app_shared_t ) );
 }
 
@@ -170,9 +170,17 @@ int bootloader_app_shared_read(bootloader_app_shared_t *shared,
 	int rv = -1;
 	bootloader_app_shared_t working;
 
-	sm_read(&working);
+    if( role == App2 )
+    {
+	    sm_read(1,&working);
+    }
+    else
+    {
+	    sm_read(0,&working);
+    }
 
-	if ((role == App ? working.signature == BOOTLOADER_COMMON_APP_SIGNATURE
+	if ((((role == App) || (role == App2)) 
+         ? working.signature == BOOTLOADER_COMMON_APP_SIGNATURE
 	     : working.signature == BOOTLOADER_COMMON_BOOTLOADER_SIGNATURE)
 	    && (working.crc == calulate_signature(&working))) {
 		*shared = working;
@@ -210,11 +218,18 @@ void bootloader_app_shared_write(bootloader_app_shared_t *shared,
 {
 	bootloader_app_shared_t working = *shared;
 	working.signature =
-		(role ==
-		 App ? BOOTLOADER_COMMON_APP_SIGNATURE :
-		 BOOTLOADER_COMMON_BOOTLOADER_SIGNATURE);
+		((role ==
+		 App) || (role == App2)) ? BOOTLOADER_COMMON_APP_SIGNATURE :
+		 BOOTLOADER_COMMON_BOOTLOADER_SIGNATURE;
 	working.crc = calulate_signature(&working);
-	sm_write(&working);
+    if( role == App2 )
+    {
+	    sm_write(1,&working);
+    }
+    else
+    {
+	    sm_write(0,&working);
+    }
 }
 
 /****************************************************************************
@@ -239,5 +254,6 @@ void bootloader_app_shared_invalidate(void)
 {
 	bootloader_app_shared_t working;
 	bootloader_app_shared_init(&working, Invalid);
-	sm_write(&working);
+	sm_write(0,&working);
+	sm_write(1,&working);
 }

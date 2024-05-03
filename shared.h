@@ -69,7 +69,8 @@
 typedef enum eRole  {
 	Invalid,
 	App,
-	BootLoader
+	BootLoader,
+    App2
 } eRole_t;
 
 /****************************************************************************

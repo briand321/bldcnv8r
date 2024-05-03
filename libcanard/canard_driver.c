@@ -1152,6 +1152,8 @@ static void handle_begin_firmware_update(CanardInstance* ins, CanardRxTransfer* 
 	// Erase the reserved flash for new app
 	flash_helper_erase_new_app(RESERVED_FLASH_SPACE_SIZE);
 #else
+    // Save shared state for bootloader and new app post reboot.
+    nbbl_helper_save_shared_state();
     // Invalidate the application validation signature used by NBBL 
     nbbl_helper_invalidate_app_signature_and_reboot();
 #endif
@@ -1207,6 +1209,10 @@ static void onTransferReceived(CanardInstance* ins, CanardRxTransfer* transfer) 
 			if (debug_level > 0) {
 				commands_printf("RestartNode\n");
 			}
+#if defined( _USE_NBBL_ )
+            // Save shared state for bootloader and new app post reboot.
+            nbbl_helper_save_shared_state();
+#endif
 			handle_restart_node();
 			break;
 

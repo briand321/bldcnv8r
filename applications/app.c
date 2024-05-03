@@ -178,16 +178,7 @@ void app_set_configuration(app_configuration *conf) {
 
 #if defined( _USE_NBBL_ )
     /* Put VESC6 app CAN node ID and bitrate in shared memory for NBBL sync */
-    {
-        bootloader_app_shared_t shared_info;
-        bootloader_app_shared_invalidate();
-
-        shared_info.bus_speed = 
-        nbbl_helper_canspeed_to_br( conf->can_baud_rate );
-
-        shared_info.node_id = conf->controller_id;
-        bootloader_app_shared_write(&shared_info, App);
-    }
+    nbbl_helper_save_shared_state();
 #endif
 }
 

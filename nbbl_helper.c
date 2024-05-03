@@ -7,6 +7,8 @@
 #include "stm32f4xx_conf.h"
 #include "utils_sys.h"
 #include "mc_interface.h"
+#include "utils_math.h"
+#include "app.h"
 
 /**
  * This is the Brickproof Bootloader's app descriptor.
@@ -85,4 +87,52 @@ uint32_t nbbl_helper_canspeed_to_br( uint16_t b )
     };
     if( b > CAN_BAUD_1M ) b = CAN_BAUD_1M; 
     return cs2br[b];
+}
+
+void nbbl_helper_save_shared_state(void)
+{
+    const app_configuration *conf = app_get_configuration();
+    bootloader_app_shared_t shared_info;
+
+    if( conf != NULL )
+    {
+        bootloader_app_shared_invalidate();
+
+        shared_info.bus_speed =
+            nbbl_helper_canspeed_to_br( conf->can_baud_rate );
+        shared_info.node_id = conf->controller_id;
+
+        bootloader_app_shared_write(&shared_info, App);
+        bootloader_app_shared_write(&shared_info, App2);
+    }
+}
+
+uint16_t nbbl_helper_default_node_id(void)
+{
+    bootloader_app_shared_t common;
+
+    // Priority and logic for default node ID:
+    //
+    // If last running FW stored a good node ID to assume, use it.
+    // Else-If bootloader stored a dynamically assigned node ID, use it.
+    // Else derive a node ID from the STM chip's UUID in range 16 to 80.
+
+    // Did last running FW app leave us a node ID to use?
+    if( (0 == bootloader_app_shared_read(&common,App2)) &&
+		common.bus_speed && common.node_id )
+    {
+        return common.node_id;
+    }
+    // Did bootloader pass us a good dynamic node ID to use?
+    else if( (0 == bootloader_app_shared_read(&common, BootLoader)) &&
+		common.bus_speed && common.node_id )
+    {
+        return common.node_id;
+    }
+    else
+    {   // Compute by taking CRC over chip's UUID and range limiting.
+        uint16_t id = utils_crc32c(STM32_UUID_8, 12) & 0x3F;
+        id = id + 16;   // range 16 - 79
+        return id;
+    }
 }
